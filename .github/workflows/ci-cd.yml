@@ -1,0 +1,72 @@
+name: CI/CD Pipeline - Django UNEMI
+
+on:
+  push:
+    branches: [ "main", "ci-setup" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # SESIÓN 1: Integración Continua (Pruebas Automatizadas)
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: unemi_db
+          POSTGRES_USER: unemi_user
+          POSTGRES_PASSWORD: unemi_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Descargar Código del Repositorio
+      uses: actions/checkout@v3
+
+    - name: Configurar Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Instalar Dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Ejecutar Pruebas (Tests)
+      env:
+        DB_HOST: localhost
+        DB_NAME: unemi_db
+        DB_USER: unemi_user
+        DB_PASSWORD: unemi_password
+        DB_PORT: 5432
+      run: |
+        python manage.py test
+
+  # SESIÓN 3: Simulación de Despliegue Continuo
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Descargar Código del Repositorio
+      uses: actions/checkout@v3
+
+    - name: Configurar Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Compilar Imagen Docker (Simulado)
+      run: |
+        docker build -t mi-proyecto-django:latest .
+
+    - name: Guardar Artefacto de Imagen Docker (Simulación de Release)
+      run: |
+        docker save mi-proyecto-django:latest > mi-proyecto-django.tar
+        echo "Artefacto listo para despliegue continuo."
